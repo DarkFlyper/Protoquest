@@ -19,6 +19,10 @@ final class ProtoquestTests: XCTestCase {
 		XCTAssertEqual(raw.httpMethod, "GET")
 		XCTAssertNil(raw.value(forHTTPHeaderField: "Content-Type"))
 		XCTAssertNil(raw.httpBody)
+		
+		let without = TestURLParameterRequest(param1: "test", shouldIncludeSecondParam: false)
+		let rawWithout = try client.rawRequest(for: without)
+		XCTAssertEqual(rawWithout.url!.absoluteString, "https://test.com/url_parameters/query_items?one=test")
 	}
 }
 
