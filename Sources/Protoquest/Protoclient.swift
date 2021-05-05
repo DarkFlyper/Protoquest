@@ -41,9 +41,7 @@ public extension Protoclient {
 		Just(request)
 			.tryMap(rawRequest(for:))
 			.also { traceOutgoing($0, for: request) }
-			.flatMap { [session] in
-				session.dataTaskPublisher(for: $0).mapError { $0 }
-			}
+			.flatMap { dispatch($0, for: request) }
 			.also { traceIncoming($0, for: request) }
 			.tryMap { [responseDecoder] in
 				try request.decodeResponse(from: $0.data, using: responseDecoder)
