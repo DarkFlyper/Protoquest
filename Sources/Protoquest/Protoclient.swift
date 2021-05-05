@@ -62,7 +62,7 @@ public extension Protoclient {
 	
 	func url<R: Request>(for request: R) throws -> URL {
 		(URLComponents(
-			url: request.baseURLOverride ?? baseURL,
+			url: (request.baseURLOverride ?? baseURL).appendingPathComponent(request.path),
 			resolvingAgainstBaseURL: false
 		)! <- {
 			$0.queryItems = request.urlParams.map { name, value in
