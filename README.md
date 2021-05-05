@@ -4,9 +4,10 @@ Simple architecture for making HTTP requests of various kinds, based on protocol
 
 Built-in request types (you can always add your own):
 - bodiless requests (e.g. `GET`)
-- JSON-body requests (e.g. `PUT`)
+- JSON-body requests (e.g. `POST`)
 - string-body requests (encoding customizable)
-- multipart requests ( TODO)
+- raw data requests (e.g. file uploads)
+- multipart requests (TODO)
 
 Built-in response types (also expandable):
 - bodiless responses (just status codes)
@@ -17,6 +18,7 @@ Built-in response types (also expandable):
 Protoquest also offers some convenient type aliases for combining these:
 - `GetJSONRequest` (no body request, JSON response)
 - `JSONJSONRequest` (JSON request, JSON response)
+- …and many more in this style
 
 The library also supports URL parameters, along with a handy way to express them using function builders (via [ArrayBuilder](https://github.com/juliand665/ArrayBuilder)):
 
