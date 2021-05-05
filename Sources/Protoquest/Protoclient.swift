@@ -65,7 +65,9 @@ public extension Protoclient {
 			url: (request.baseURLOverride ?? baseURL).appendingPathComponent(request.path),
 			resolvingAgainstBaseURL: false
 		)! <- {
-			$0.queryItems = request.urlParams.map { name, value in
+			let urlParams = request.urlParams
+			guard !urlParams.isEmpty else { return }
+			$0.queryItems = urlParams.map { name, value in
 				URLQueryItem(
 					name: name,
 					value: value.map(String.init(describing:))
