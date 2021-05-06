@@ -2,16 +2,31 @@ import Foundation
 import Combine
 import HandyOperators
 
-public protocol Protoclient {
-	typealias DataTaskResult = (data: Data, response: URLResponse)
+/// The standard composition of a client—you can compose `BaseClient` with other protocols for testing and such.
+public typealias Protoclient = BaseClient & URLSessionClient
+
+/// A raw result received from the network.
+public typealias DataTaskResult = (data: Data, response: URLResponse)
+
+/**
+A client, encapsulating the logic for sending requests to servers and processing their responses.
+
+Only `baseURL` has to be specified by conformers—all the other members have default implementations (especially if you use the `Protoclient` type alias), intended as customization points for you to override.
+*/
+public protocol BaseClient {
+	/// There's no real point for typed errors most of the time.
+	typealias Publisher<T> = AnyPublisher<T, Error>
 	
+	/// The base URL relative to which to interpret request paths.
 	var baseURL: URL { get }
-	var session: URLSession { get }
+	
+	/// The JSON encoder provided to requests.
 	var requestEncoder: JSONEncoder { get }
+	/// The JSON decoder provided to requests.
 	var responseDecoder: JSONDecoder { get }
 	
 	/// Encodes a request, dispatches it, decodes its response, and publishes that.
-	func send<R: Request>(_ request: R) -> AnyPublisher<R.Response, Error>
+	func send<R: Request>(_ request: R) -> Publisher<R.Response>
 	
 	/// Turns a request into a raw `URLRequest`.
 	func rawRequest<R: Request>(for request: R) throws -> URLRequest
@@ -23,7 +38,7 @@ public protocol Protoclient {
 	func addHeaders(to rawRequest: inout URLRequest)
 	
 	/// Dispatches a request to the network, returning its response (data and error). Uses `session` by default.
-	func dispatch<R: Request>(_ rawRequest: URLRequest, for request: R) -> AnyPublisher<DataTaskResult, Error>
+	func dispatch<R: Request>(_ rawRequest: URLRequest, for request: R) -> Publisher<DataTaskResult>
 	
 	/// Inspects any outgoing request, e.g. for logging purposes.
 	func traceOutgoing<R: Request>(_ rawRequest: URLRequest, for request: R)
@@ -31,20 +46,18 @@ public protocol Protoclient {
 	func traceIncoming<R: Request>(_ response: DataTaskResult, for request: R)
 }
 
-public extension Protoclient {
-	var session: URLSession { .shared }
-	
+public extension BaseClient {
 	var requestEncoder: JSONEncoder { .init() }
 	var responseDecoder: JSONDecoder { .init() }
 	
-	func send<R: Request>(_ request: R) -> AnyPublisher<R.Response, Error> {
+	func send<R: Request>(_ request: R) -> Publisher<R.Response> {
 		Just(request)
 			.tryMap(rawRequest(for:))
 			.also { traceOutgoing($0, for: request) }
 			.flatMap { dispatch($0, for: request) }
 			.also { traceIncoming($0, for: request) }
 			.tryMap { [responseDecoder] in
-				try request.decodeResponse(from: $0.data, using: responseDecoder)
+				try request.decodeResponse(from: $0, using: responseDecoder)
 			}
 			.eraseToAnyPublisher()
 	}
@@ -76,12 +89,22 @@ public extension Protoclient {
 	
 	func addHeaders(to rawRequest: inout URLRequest) {}
 	
-	func dispatch<R: Request>(_ rawRequest: URLRequest, for request: R) -> AnyPublisher<DataTaskResult, Error> {
+	func traceOutgoing<R: Request>(_ rawRequest: URLRequest, for request: R) {}
+	func traceIncoming<R: Request>(_ response: DataTaskResult, for request: R) {}
+}
+
+/// A client that uses a URLSession to dispatch its requests.
+public protocol URLSessionClient: BaseClient {
+	/// The session to dispatch requests on, defaulting to `URLSession.shared`.
+	var session: URLSession { get }
+}
+
+public extension URLSessionClient {
+	var session: URLSession { .shared }
+	
+	func dispatch<R: Request>(_ rawRequest: URLRequest, for request: R) -> Publisher<DataTaskResult> {
 		session.dataTaskPublisher(for: rawRequest)
 			.mapError { $0 }
 			.eraseToAnyPublisher()
 	}
-	
-	func traceOutgoing<R: Request>(_ rawRequest: URLRequest, for request: R) {}
-	func traceIncoming<R: Request>(_ response: URLSession.DataTaskPublisher.Output, for request: R) {}
 }

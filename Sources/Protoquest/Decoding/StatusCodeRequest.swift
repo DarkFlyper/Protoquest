@@ -4,5 +4,5 @@ import Foundation
 public protocol StatusCodeRequest: Request where Response == Void {}
 
 public extension StatusCodeRequest {
-	func decodeResponse(from raw: Data, using decoder: JSONDecoder) throws -> Response {}
+	func decodeResponse(from raw: DataTaskResult, using decoder: JSONDecoder) throws -> Response {}
 }

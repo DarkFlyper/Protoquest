@@ -9,7 +9,7 @@ public protocol StringDecodingRequest: Request where Response == String {
 public extension StringDecodingRequest {
 	var responseEncoding: String.Encoding { .utf8 }
 	
-	func decodeResponse(from raw: Data, using decoder: JSONDecoder) throws -> Response {
-		String(bytes: raw, encoding: .utf8)!
+	func decodeResponse(from raw: DataTaskResult, using decoder: JSONDecoder) throws -> Response {
+		String(bytes: raw.data, encoding: .utf8)!
 	}
 }
