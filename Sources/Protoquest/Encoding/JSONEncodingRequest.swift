@@ -1,10 +1,13 @@
 import Foundation
 
+/// A request that sends a JSON body, defaulting to itself if `Encodable`.
 public protocol JSONEncodingRequest: Request {
 	/// If non-nil, overrides the decoder used to decode the response for this request.
 	var encoderOverride: JSONEncoder? { get }
 	
+	/// The type of the body to encode. `Self` often makes sense here, which it defaults to if that's`Encodable`.
 	associatedtype Body: Encodable
+	/// The body to encode. Defaults to `self` if that matches the type `Body`.
 	var body: Body { get }
 }
 
