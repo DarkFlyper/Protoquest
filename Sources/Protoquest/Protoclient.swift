@@ -15,7 +15,7 @@ Only `baseURL` has to be specified by conformers—all the other members have de
 */
 public protocol BaseClient {
 	/// There's no real point for typed errors most of the time.
-	typealias Publisher<T> = AnyPublisher<T, Error>
+	typealias BasicPublisher<T> = AnyPublisher<T, Error>
 	
 	/// The base URL relative to which to interpret request paths.
 	var baseURL: URL { get }
@@ -26,7 +26,7 @@ public protocol BaseClient {
 	var responseDecoder: JSONDecoder { get }
 	
 	/// Encodes a request, dispatches it, decodes its response, and publishes that.
-	func send<R: Request>(_ request: R) -> Publisher<R.Response>
+	func send<R: Request>(_ request: R) -> BasicPublisher<R.Response>
 	
 	/// Turns a request into a raw `URLRequest`.
 	func rawRequest<R: Request>(for request: R) throws -> URLRequest
@@ -38,7 +38,7 @@ public protocol BaseClient {
 	func addHeaders(to rawRequest: inout URLRequest)
 	
 	/// Dispatches a request to the network, returning its response (data and error). Uses `session` by default.
-	func dispatch<R: Request>(_ rawRequest: URLRequest, for request: R) -> Publisher<DataTaskResult>
+	func dispatch<R: Request>(_ rawRequest: URLRequest, for request: R) -> BasicPublisher<DataTaskResult>
 	
 	/// Inspects any outgoing request, e.g. for logging purposes.
 	func traceOutgoing<R: Request>(_ rawRequest: URLRequest, for request: R)
@@ -50,7 +50,7 @@ public extension BaseClient {
 	var requestEncoder: JSONEncoder { .init() }
 	var responseDecoder: JSONDecoder { .init() }
 	
-	func send<R: Request>(_ request: R) -> Publisher<R.Response> {
+	func send<R: Request>(_ request: R) -> BasicPublisher<R.Response> {
 		Just(request)
 			.tryMap(rawRequest(for:))
 			.also { traceOutgoing($0, for: request) }
@@ -102,7 +102,7 @@ public protocol URLSessionClient: BaseClient {
 public extension URLSessionClient {
 	var session: URLSession { .shared }
 	
-	func dispatch<R: Request>(_ rawRequest: URLRequest, for request: R) -> Publisher<DataTaskResult> {
+	func dispatch<R: Request>(_ rawRequest: URLRequest, for request: R) -> BasicPublisher<DataTaskResult> {
 		session.dataTaskPublisher(for: rawRequest)
 			.mapError { $0 }
 			.eraseToAnyPublisher()
