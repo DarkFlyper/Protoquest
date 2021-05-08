@@ -10,30 +10,34 @@ public protocol JSONDecodingRequest: Request where Response: Decodable {
 public extension JSONDecodingRequest {
 	var decoderOverride: JSONDecoder? { nil }
 	
-	func decodeResponse(from raw: DataTaskResult, using decoder: JSONDecoder) throws -> Response {
+	func decodeResponse(from raw: Protoresponse) throws -> Response {
+		try raw.decodeJSON(using: decoderOverride)
+	}
+}
+
+public extension Protoresponse {
+	func decodeJSON<Body>(
+		as type: Body.Type = Body.self,
+		using decoderOverride: JSONDecoder? = nil
+	) throws -> Body where Body: Decodable {
 		do {
-			return try (decoderOverride ?? decoder).decode(Response.self, from: raw.data)
+			return try (decoderOverride ?? decoder)
+				.decode(Body.self, from: body)
 		} catch let error as DecodingError {
-			throw JSONDecodingError(error: error, toDecode: raw)
+			throw JSONDecodingError(error: error, toDecode: self)
 		}
 	}
 }
 
-private struct JSONDecodingError: LocalizedError {
-	var error: DecodingError
-	var toDecode: DataTaskResult
+public struct JSONDecodingError: ResponseDecodingError {
+	public var error: DecodingError
+	public var toDecode: Protoresponse
 	
-	var errorDescription: String? {
+	public var errorDetails: String {
 		"""
 		\(error.localizedDescription)
 		
 		\("" <- { dump(error, to: &$0) })
-		
-		The data to decode was:
-		\(String(bytes: toDecode.data, encoding: .utf8)!)
-		
-		which was received with the following response:
-		\("" <- { dump(toDecode.response, to: &$0) })
 		"""
 	}
 }

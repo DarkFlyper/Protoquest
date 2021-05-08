@@ -4,5 +4,5 @@ import Foundation
 public protocol RawDataRequest: Request where Response == Data {}
 
 public extension RawDataRequest {
-	func decodeResponse(from raw: DataTaskResult, using decoder: JSONDecoder) throws -> Response { raw.data }
+	func decodeResponse(from raw: Protoresponse) throws -> Data { raw.body }
 }

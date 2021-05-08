@@ -1,8 +1,10 @@
 import Foundation
 
-/// A request that expects no response body, only looking at the status code.
+/// A request that expects no response body, only expecting response metadata.
+///
+/// - Note: The request doesn't actually provide the status code or headers—you'd handle that for all requests somewhere in the client, or provide a custom implementation of `decodeResponse` instead..
 public protocol StatusCodeRequest: Request where Response == Void {}
 
 public extension StatusCodeRequest {
-	func decodeResponse(from raw: DataTaskResult, using decoder: JSONDecoder) throws -> Response {}
+	func decodeResponse(from raw: Protoresponse) throws -> Response {}
 }

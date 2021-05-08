@@ -25,7 +25,7 @@ public protocol Request {
 	/// The expected response type to this request.
 	associatedtype Response
 	/// Decodes the response received for this response into the expected response type.
-	func decodeResponse(from raw: DataTaskResult, using decoder: JSONDecoder) throws -> Response
+	func decodeResponse(from raw: Protoresponse) throws -> Response
 }
 
 public extension Request {
