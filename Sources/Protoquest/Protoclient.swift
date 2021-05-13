@@ -71,7 +71,11 @@ public extension BaseClient {
 	
 	func url<R: Request>(for request: R) throws -> URL {
 		(URLComponents(
-			url: (request.baseURLOverride ?? baseURL).appendingPathComponent(request.path),
+			url: (request.baseURLOverride ?? baseURL) <- {
+				if !request.path.isEmpty {
+					$0.appendPathComponent(request.path)
+				}
+			},
 			resolvingAgainstBaseURL: false
 		)! <- {
 			let urlParams = request.urlParams
