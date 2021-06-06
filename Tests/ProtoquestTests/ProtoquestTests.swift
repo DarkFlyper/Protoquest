@@ -60,10 +60,14 @@ struct TestClient: Protoclient {
 	
 	let echo = "echo ".data(using: .utf8)!
 	
-	func dispatch<R>(_ rawRequest: URLRequest, for request: R) -> AnyPublisher<DataTaskResult, Error> where R : Request {
-		Just((data: echo + (rawRequest.httpBody ?? Data()), response: URLResponse()))
-			.setFailureType(to: Error.self)
-			.eraseToAnyPublisher()
+	func dispatch<R>(_ rawRequest: URLRequest, for request: R) -> BasicPublisher<Protoresponse> where R : Request {
+		Just(Protoresponse(
+			body: echo + (rawRequest.httpBody ?? Data()),
+			metadata: URLResponse(),
+			decoder: JSONDecoder()
+		))
+		.setFailureType(to: Error.self)
+		.eraseToAnyPublisher()
 	}
 }
 

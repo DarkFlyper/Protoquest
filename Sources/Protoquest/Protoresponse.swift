@@ -13,4 +13,10 @@ public struct Protoresponse {
 	public var httpMetadata: HTTPURLResponse? {
 		metadata as? HTTPURLResponse
 	}
+	
+	public init(body: Data, metadata: URLResponse, decoder: JSONDecoder) {
+		self.body = body
+		self.metadata = metadata
+		self.decoder = decoder
+	}
 }

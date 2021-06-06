@@ -11,7 +11,7 @@ A client, encapsulating the logic for sending requests to servers and processing
 Only `baseURL` has to be specified by conformers—all the other members have default implementations (especially if you use the `Protoclient` type alias), intended as customization points for you to override.
 */
 public protocol BaseClient {
-	/// There's no real point for typed errors most of the time.
+	/// Typed errors really complicate things when combined with regular `throws` methods.
 	typealias BasicPublisher<T> = AnyPublisher<T, Error>
 	
 	/// The base URL relative to which to interpret request paths.
