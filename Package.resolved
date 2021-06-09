@@ -5,9 +5,9 @@
         "package": "ArrayBuilder",
         "repositoryURL": "https://github.com/juliand665/ArrayBuilder",
         "state": {
-          "branch": "main",
-          "revision": "e92dd75e19f402ddcd4c4fd027795d98bc2898d8",
-          "version": null
+          "branch": null,
+          "revision": "f713ffd1432c5fb7cbf47a84bd634b18256957b6",
+          "version": "1.1.0"
         }
       },
       {
@@ -15,8 +15,8 @@
         "repositoryURL": "https://github.com/juliand665/HandyOperators",
         "state": {
           "branch": null,
-          "revision": "bb0ae87af5a3c0dd052c0f8f5d85a2b3ee26b31c",
-          "version": "2.0.0"
+          "revision": "27f60a00d9ad310afdf66cc7a25adc4bdb387d58",
+          "version": "2.0.1"
         }
       }
     ]
