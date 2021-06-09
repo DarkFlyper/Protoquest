@@ -106,7 +106,7 @@ public protocol URLSessionClient: BaseClient {
 public extension URLSessionClient {
 	var session: URLSession { .shared }
 	
-	@available(iOS 15.0, *)
+	@available(macOS 12, iOS 15, tvOS 15, watchOS 8, *)
 	func dispatch<R: Request>(_ rawRequest: URLRequest, for request: R) async throws -> Protoresponse {
 		let (data, response) = try await session.data(for: rawRequest)
 		return wrapResponse(data: data, response: response)
