@@ -1,6 +1,5 @@
 import XCTest
 import Protoquest
-import Combine
 
 final class ProtoquestTests: XCTestCase {
 	let client = TestClient()
