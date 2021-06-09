@@ -26,32 +26,12 @@ final class ProtoquestTests: XCTestCase {
 		XCTAssertEqual(rawWithout.url!.absoluteString, "https://test.com/url_parameters/query_items?one=test")
 	}
 	
-	func testSending() {
-		verifyResponse(for: TestGetStringRequest()) { response in
-			XCTAssertEqual(response, "echo ")
-		}
+	func testSending() async throws {
+		let string = try await client.send(TestGetStringRequest())
+		XCTAssertEqual(string, "echo ")
 		
-		verifyResponse(for: TestJSONStringRequest(body: .init(text: "hello!"))) { response in
-			XCTAssertEqual(response, #"echo {"text":"hello!"}"#)
-		}
-	}
-	
-	func verifyResponse<R: Request>(for request: R, verify: @escaping (R.Response) -> Void) {
-		let responseExpectation = expectation(description: "response")
-		let cancellable = client.send(request).sink {
-			switch $0 {
-			case .finished:
-				break
-			case .failure(let error):
-				XCTFail("error executing request: \(error)")
-			}
-		} receiveValue: {
-			verify($0)
-			responseExpectation.fulfill()
-		}
-		
-		waitForExpectations(timeout: 0.1, handler: nil)
-		_ = cancellable
+		let json = try await client.send(TestJSONStringRequest(body: .init(text: "hello!")))
+		XCTAssertEqual(json, #"echo {"text":"hello!"}"#)
 	}
 }
 
@@ -60,14 +40,12 @@ struct TestClient: Protoclient {
 	
 	let echo = "echo ".data(using: .utf8)!
 	
-	func dispatch<R>(_ rawRequest: URLRequest, for request: R) -> BasicPublisher<Protoresponse> where R : Request {
-		Just(Protoresponse(
+	func dispatch<R>(_ rawRequest: URLRequest, for request: R) async throws -> Protoresponse where R : Request {
+		Protoresponse(
 			body: echo + (rawRequest.httpBody ?? Data()),
 			metadata: URLResponse(),
 			decoder: JSONDecoder()
-		))
-		.setFailureType(to: Error.self)
-		.eraseToAnyPublisher()
+		)
 	}
 }
 

@@ -1,5 +1,4 @@
 import Foundation
-import Combine
 import HandyOperators
 
 /// The standard composition of a client—you can compose `BaseClient` with other protocols for testing and such.
@@ -11,9 +10,6 @@ A client, encapsulating the logic for sending requests to servers and processing
 Only `baseURL` has to be specified by conformers—all the other members have default implementations (especially if you use the `Protoclient` type alias), intended as customization points for you to override.
 */
 public protocol BaseClient {
-	/// Typed errors really complicate things when combined with regular `throws` methods.
-	typealias BasicPublisher<T> = AnyPublisher<T, Error>
-	
 	/// The base URL relative to which to interpret request paths.
 	var baseURL: URL { get }
 	
@@ -23,7 +19,7 @@ public protocol BaseClient {
 	var responseDecoder: JSONDecoder { get }
 	
 	/// Encodes a request, dispatches it, decodes its response, and publishes that.
-	func send<R: Request>(_ request: R) -> BasicPublisher<R.Response>
+	func send<R: Request>(_ request: R) async throws -> R.Response
 	
 	/// Turns a request into a raw `URLRequest`.
 	func rawRequest<R: Request>(for request: R) throws -> URLRequest
@@ -35,7 +31,7 @@ public protocol BaseClient {
 	func addHeaders(to rawRequest: inout URLRequest)
 	
 	/// Dispatches a request to the network, returning its response (data and error). Uses `session` by default.
-	func dispatch<R: Request>(_ rawRequest: URLRequest, for request: R) -> BasicPublisher<Protoresponse>
+	func dispatch<R: Request>(_ rawRequest: URLRequest, for request: R) async throws -> Protoresponse
 	
 	/// Wraps a raw data task response in a `Protoresponse` for nicer ergonomics.
 	func wrapResponse(data: Data, response: URLResponse) -> Protoresponse
@@ -50,14 +46,12 @@ public extension BaseClient {
 	var requestEncoder: JSONEncoder { .init() }
 	var responseDecoder: JSONDecoder { .init() }
 	
-	func send<R: Request>(_ request: R) -> BasicPublisher<R.Response> {
-		Just(request)
-			.tryMap(rawRequest(for:))
-			.also { traceOutgoing($0, for: request) }
-			.flatMap { dispatch($0, for: request) }
-			.also { traceIncoming($0, for: request) }
-			.tryMap(request.decodeResponse(from:))
-			.eraseToAnyPublisher()
+	func send<R: Request>(_ request: R) async throws -> R.Response {
+		let rawRequest = try self.rawRequest(for: request)
+		traceOutgoing(rawRequest, for: request)
+		let rawResponse = try await dispatch(rawRequest, for: request)
+		traceIncoming(rawResponse, for: request)
+		return try request.decodeResponse(from: rawResponse)
 	}
 	
 	func rawRequest<R: Request>(for request: R) throws -> URLRequest {
@@ -112,10 +106,9 @@ public protocol URLSessionClient: BaseClient {
 public extension URLSessionClient {
 	var session: URLSession { .shared }
 	
-	func dispatch<R: Request>(_ rawRequest: URLRequest, for request: R) -> BasicPublisher<Protoresponse> {
-		session.dataTaskPublisher(for: rawRequest)
-			.mapError { $0 }
-			.map(wrapResponse(data:response:))
-			.eraseToAnyPublisher()
+	@available(iOS 15.0, *)
+	func dispatch<R: Request>(_ rawRequest: URLRequest, for request: R) async throws -> Protoresponse {
+		let (data, response) = try await session.data(for: rawRequest)
+		return wrapResponse(data: data, response: response)
 	}
 }
