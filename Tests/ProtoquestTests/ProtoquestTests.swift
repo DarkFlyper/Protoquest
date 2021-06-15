@@ -40,10 +40,9 @@ struct TestClient: Protoclient {
 	let echo = "echo ".data(using: .utf8)!
 	
 	func dispatch<R>(_ rawRequest: URLRequest, for request: R) async throws -> Protoresponse where R : Request {
-		Protoresponse(
-			body: echo + (rawRequest.httpBody ?? Data()),
-			metadata: URLResponse(),
-			decoder: JSONDecoder()
+		wrapResponse(
+			data: echo + (rawRequest.httpBody ?? Data()),
+			response: .init()
 		)
 	}
 }
