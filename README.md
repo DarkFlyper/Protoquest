@@ -30,7 +30,7 @@ struct MyRequest: GetJSONRequest {
 	var endIndex: Int?
 	
 	// implicitly gets @ArrayBuilder from the Request protocol
-	func urlParams() -> [URLParameter] {
+	var urlParams: [URLParameter] {
 		("startIndex", startIndex)
 		if let endIndex = endIndex {
 			("endIndex", endIndex)
