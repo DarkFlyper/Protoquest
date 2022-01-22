@@ -28,13 +28,13 @@ public protocol BaseClient {
 	func url<R: Request>(for request: R) async throws -> URL
 	
 	/// Adds any common HTTP headers to a request.
-	func addHeaders(to rawRequest: inout URLRequest) async
+	func addHeaders(to rawRequest: inout URLRequest) async throws
 	
 	/// Dispatches a request to the network, returning its response (data and error). Uses `session` by default.
 	func dispatch<R: Request>(_ rawRequest: URLRequest, for request: R) async throws -> Protoresponse
 	
 	/// Wraps a raw data task response in a `Protoresponse` for nicer ergonomics.
-	func wrapResponse(data: Data, response: URLResponse) async -> Protoresponse
+	func wrapResponse(data: Data, response: URLResponse) async throws -> Protoresponse
 	
 	/// Inspects any outgoing request, e.g. for logging purposes.
 	func traceOutgoing<R: Request>(_ rawRequest: URLRequest, for request: R) async
@@ -58,7 +58,7 @@ public extension BaseClient {
 		try await URLRequest(url: url(for: request)) <- { rawRequest in
 			rawRequest.httpMethod = request.httpMethod
 			rawRequest.setValue(request.contentType, forHTTPHeaderField: "Content-Type")
-			await addHeaders(to: &rawRequest)
+			try await addHeaders(to: &rawRequest)
 			try request.encode(to: &rawRequest, using: requestEncoder)
 		}
 	}
@@ -122,6 +122,6 @@ public extension URLSessionClient {
 				}
 			}
 		}
-		return await wrapResponse(data: data, response: response)
+		return try await wrapResponse(data: data, response: response)
 	}
 }
