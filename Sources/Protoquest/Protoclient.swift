@@ -22,24 +22,24 @@ public protocol BaseClient {
 	func send<R: Request>(_ request: R) async throws -> R.Response
 	
 	/// Turns a request into a raw `URLRequest`.
-	func rawRequest<R: Request>(for request: R) throws -> URLRequest
+	func rawRequest<R: Request>(for request: R) async throws -> URLRequest
 	
 	/// Figures out the URL to use for a request, including URL parameters.
-	func url<R: Request>(for request: R) throws -> URL
+	func url<R: Request>(for request: R) async throws -> URL
 	
 	/// Adds any common HTTP headers to a request.
-	func addHeaders(to rawRequest: inout URLRequest)
+	func addHeaders(to rawRequest: inout URLRequest) async
 	
 	/// Dispatches a request to the network, returning its response (data and error). Uses `session` by default.
 	func dispatch<R: Request>(_ rawRequest: URLRequest, for request: R) async throws -> Protoresponse
 	
 	/// Wraps a raw data task response in a `Protoresponse` for nicer ergonomics.
-	func wrapResponse(data: Data, response: URLResponse) -> Protoresponse
+	func wrapResponse(data: Data, response: URLResponse) async -> Protoresponse
 	
 	/// Inspects any outgoing request, e.g. for logging purposes.
-	func traceOutgoing<R: Request>(_ rawRequest: URLRequest, for request: R)
+	func traceOutgoing<R: Request>(_ rawRequest: URLRequest, for request: R) async
 	/// Inspects any incoming response, e.g. for logging purposes.
-	func traceIncoming<R: Request>(_ response: Protoresponse, for request: R)
+	func traceIncoming<R: Request>(_ response: Protoresponse, for request: R) async
 }
 
 public extension BaseClient {
@@ -47,18 +47,18 @@ public extension BaseClient {
 	var responseDecoder: JSONDecoder { .init() }
 	
 	func send<R: Request>(_ request: R) async throws -> R.Response {
-		let rawRequest = try self.rawRequest(for: request)
-		traceOutgoing(rawRequest, for: request)
+		let rawRequest = try await self.rawRequest(for: request)
+		await traceOutgoing(rawRequest, for: request)
 		let rawResponse = try await dispatch(rawRequest, for: request)
-		traceIncoming(rawResponse, for: request)
+		await traceIncoming(rawResponse, for: request)
 		return try request.decodeResponse(from: rawResponse)
 	}
 	
-	func rawRequest<R: Request>(for request: R) throws -> URLRequest {
-		try URLRequest(url: url(for: request)) <- { rawRequest in
+	func rawRequest<R: Request>(for request: R) async throws -> URLRequest {
+		try await URLRequest(url: url(for: request)) <- { rawRequest in
 			rawRequest.httpMethod = request.httpMethod
 			rawRequest.setValue(request.contentType, forHTTPHeaderField: "Content-Type")
-			addHeaders(to: &rawRequest)
+			await addHeaders(to: &rawRequest)
 			try request.encode(to: &rawRequest, using: requestEncoder)
 		}
 	}

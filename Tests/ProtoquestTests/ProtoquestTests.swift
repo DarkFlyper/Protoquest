@@ -4,8 +4,8 @@ import Protoquest
 final class ProtoquestTests: XCTestCase {
 	let client = TestClient()
 	
-	func testExample() throws {
-		let raw = try client.rawRequest(for: TestRequest(text: "hi!"))
+	func testExample() async throws {
+		let raw = try await client.rawRequest(for: TestRequest(text: "hi!"))
 		XCTAssertEqual(raw.url!.absoluteString, "https://test.com/example/path")
 		XCTAssertEqual(raw.httpMethod, "POST")
 		XCTAssertEqual(raw.value(forHTTPHeaderField: "Content-Type"), "application/json")
@@ -13,15 +13,15 @@ final class ProtoquestTests: XCTestCase {
 		XCTAssertEqual(json, #"{"text":"hi!"}"#)
 	}
 	
-	func testURLParams() throws {
-		let raw = try client.rawRequest(for: TestURLParameterRequest(param1: "te&st"))
+	func testURLParams() async throws {
+		let raw = try await client.rawRequest(for: TestURLParameterRequest(param1: "te&st"))
 		XCTAssertEqual(raw.url!.absoluteString, "https://test.com/url_parameters/query_items?one=te%26st&two=42")
 		XCTAssertEqual(raw.httpMethod, "GET")
 		XCTAssertNil(raw.value(forHTTPHeaderField: "Content-Type"))
 		XCTAssertNil(raw.httpBody)
 		
 		let without = TestURLParameterRequest(param1: "test", shouldIncludeSecondParam: false)
-		let rawWithout = try client.rawRequest(for: without)
+		let rawWithout = try await client.rawRequest(for: without)
 		XCTAssertEqual(rawWithout.url!.absoluteString, "https://test.com/url_parameters/query_items?one=test")
 	}
 	
