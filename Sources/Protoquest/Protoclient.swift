@@ -106,9 +106,22 @@ public protocol URLSessionClient: BaseClient {
 public extension URLSessionClient {
 	var session: URLSession { .shared }
 	
-	@available(macOS 12, iOS 15, tvOS 15, watchOS 8, *)
 	func dispatch<R: Request>(_ rawRequest: URLRequest, for request: R) async throws -> Protoresponse {
-		let (data, response) = try await session.data(for: rawRequest)
-		return wrapResponse(data: data, response: response)
+		let data: Data
+		let response: URLResponse
+		if #available(macOS 12.0, iOS 15, tvOS 15, watchOS 8, *) {
+			(data, response) = try await session.data(for: rawRequest)
+		} else {
+			(data, response) = try await withCheckedThrowingContinuation { continuation in
+				session.dataTask(with: rawRequest) { data, response, error in
+					if let error = error {
+						continuation.resume(with: .failure(error))
+					} else {
+						continuation.resume(with: .success((data!, response!)))
+					}
+				}
+			}
+		}
+		return await wrapResponse(data: data, response: response)
 	}
 }
