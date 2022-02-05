@@ -30,7 +30,7 @@ public protocol BaseClient {
 	/// Adds any common HTTP headers to a request.
 	func addHeaders(to rawRequest: inout URLRequest) async throws
 	
-	/// Dispatches a request to the network, returning its response (data and error). Uses `session` by default.
+	/// Dispatches a request to the network, returning its response (data and error).
 	func dispatch<R: Request>(_ rawRequest: URLRequest, for request: R) async throws -> Protoresponse
 	
 	/// Wraps a raw data task response in a `Protoresponse` for nicer ergonomics.
@@ -100,20 +100,20 @@ public extension BaseClient {
 /// A client that uses a URLSession to dispatch its requests.
 public protocol URLSessionClient: BaseClient {
 	/// The session to dispatch requests on, defaulting to `URLSession.shared`.
-	var session: URLSession { get }
+	var urlSession: URLSession { get }
 }
 
 public extension URLSessionClient {
-	var session: URLSession { .shared }
+	var urlSession: URLSession { .shared }
 	
 	func dispatch<R: Request>(_ rawRequest: URLRequest, for request: R) async throws -> Protoresponse {
 		let data: Data
 		let response: URLResponse
 		if #available(macOS 12.0, iOS 15, tvOS 15, watchOS 8, *) {
-			(data, response) = try await session.data(for: rawRequest)
+			(data, response) = try await urlSession.data(for: rawRequest)
 		} else {
 			(data, response) = try await withCheckedThrowingContinuation { continuation in
-				session.dataTask(with: rawRequest) { data, response, error in
+				urlSession.dataTask(with: rawRequest) { data, response, error in
 					if let error = error {
 						continuation.resume(with: .failure(error))
 					} else {
