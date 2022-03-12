@@ -6,5 +6,5 @@ import Foundation
 public protocol StatusCodeRequest: Request where Response == Void {}
 
 public extension StatusCodeRequest {
-	func decodeResponse(from raw: Protoresponse) throws -> Response {}
+	func decodeResponse(from raw: Protoresponse) throws -> Response { () }
 }
