@@ -27,6 +27,9 @@ public protocol BaseClient {
 	/// Figures out the URL to use for a request, including URL parameters.
 	func url<R: Request>(for request: R) async throws -> URL
 	
+	/// Provides the base URL to resolve a request's path against.
+	func baseURL(for request: some Request) async throws -> URL
+	
 	/// Adds any common HTTP headers to a request.
 	func addHeaders(to rawRequest: inout URLRequest) async throws
 	
@@ -63,9 +66,9 @@ public extension BaseClient {
 		}
 	}
 	
-	func url<R: Request>(for request: R) throws -> URL {
+	func url<R: Request>(for request: R) async throws -> URL {
 		(URLComponents(
-			url: (request.baseURLOverride ?? baseURL) <- {
+			url: try await baseURL(for: request) <- {
 				if !request.path.isEmpty {
 					$0.appendPathComponent(request.path)
 				}
@@ -81,6 +84,11 @@ public extension BaseClient {
 				)
 			}
 		}).url!
+	}
+	
+	// has to be marked async to not shadow the protocol requirement in non-async contexts (likely swift bug)
+	func baseURL(for request: some Request) async -> URL {
+		request.baseURLOverride ?? baseURL
 	}
 	
 	func addHeaders(to rawRequest: inout URLRequest) {}
