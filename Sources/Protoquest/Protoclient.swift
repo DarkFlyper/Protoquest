@@ -39,10 +39,11 @@ public protocol BaseClient {
 	/// Wraps a raw data task response in a `Protoresponse` for nicer ergonomics.
 	func wrapResponse(data: Data, response: URLResponse) async throws -> Protoresponse
 	
+	// TODO: need some kind of middleware rather than this
 	/// Inspects any outgoing request, e.g. for logging purposes.
 	func traceOutgoing<R: Request>(_ rawRequest: URLRequest, for request: R) async
 	/// Inspects any incoming response, e.g. for logging purposes.
-	func traceIncoming<R: Request>(_ response: Protoresponse, for request: R) async
+	func traceIncoming<R: Request>(_ response: Protoresponse, for request: R, encodedAs rawRequest: URLRequest) async
 }
 
 public extension BaseClient {
@@ -53,7 +54,7 @@ public extension BaseClient {
 		let rawRequest = try await self.rawRequest(for: request)
 		await traceOutgoing(rawRequest, for: request)
 		let rawResponse = try await dispatch(rawRequest, for: request)
-		await traceIncoming(rawResponse, for: request)
+		await traceIncoming(rawResponse, for: request, encodedAs: rawRequest)
 		return try request.decodeResponse(from: rawResponse)
 	}
 	
@@ -102,7 +103,7 @@ public extension BaseClient {
 	}
 	
 	func traceOutgoing<R: Request>(_ rawRequest: URLRequest, for request: R) {}
-	func traceIncoming<R: Request>(_ response: Protoresponse, for request: R) {}
+	func traceIncoming<R: Request>(_ response: Protoresponse, for request: R, encodedAs rawRequest: URLRequest) {}
 }
 
 /// A client that uses a URLSession to dispatch its requests.
