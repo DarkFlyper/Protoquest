@@ -36,8 +36,31 @@ public struct JSONDecodingError: ResponseDecodingError {
 	public var errorDetails: String {
 		"""
 		\(error.localizedDescription)
-		
+
+		path: \(error.prettyCodingPath())
+
 		\("" <- { dump(error, to: &$0) })
 		"""
+	}
+}
+
+extension DecodingError {
+	func prettyCodingPath() -> String {
+		switch self {
+		case
+				.typeMismatch(_, let context),
+				.valueNotFound(_, let context),
+				.keyNotFound(_, let context),
+				.dataCorrupted(let context):
+			return context.codingPath.reduce(into: "") { path, key in
+				if let int = key.intValue {
+					path += "[\(int)]"
+				} else {
+					path += ".\(key.stringValue)"
+				}
+			}
+		@unknown default:
+			return "path for unknown case \(self)"
+		}
 	}
 }
