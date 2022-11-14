@@ -17,8 +17,8 @@ public extension JSONEncodingRequest {
 	
 	var encoderOverride: JSONEncoder? { nil }
 	
-	func encode(to rawRequest: inout URLRequest, using encoder: JSONEncoder) throws {
-		rawRequest.httpBody = try (encoderOverride ?? encoder).encode(body)
+	func encode(to rawRequest: inout URLRequest) throws {
+		rawRequest.httpBody = try (encoderOverride ?? JSONEncoder()).encode(body)
 	}
 }
 

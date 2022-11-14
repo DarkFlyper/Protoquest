@@ -12,7 +12,7 @@ public extension StringEncodingRequest {
 	var contentType: String? { "text/plain" }
 	var requestEncoding: String.Encoding { .utf8 }
 	
-	func encode(to rawRequest: inout URLRequest, using encoder: JSONEncoder) throws {
+	func encode(to rawRequest: inout URLRequest) throws {
 		rawRequest.httpBody = body.data(using: requestEncoding)
 	}
 }

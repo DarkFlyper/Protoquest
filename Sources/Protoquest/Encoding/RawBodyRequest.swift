@@ -7,7 +7,7 @@ public protocol RawBodyRequest: Request {
 }
 
 public extension RawBodyRequest {
-	func encode(to rawRequest: inout URLRequest, using encoder: JSONEncoder) throws {
+	func encode(to rawRequest: inout URLRequest) throws {
 		rawRequest.httpBody = body
 	}
 }

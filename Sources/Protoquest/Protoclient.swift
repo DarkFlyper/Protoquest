@@ -1,136 +1,110 @@
 import Foundation
 import HandyOperators
 
-/// The standard composition of a client—you can compose `BaseClient` with other protocols for testing and such.
-public typealias Protoclient = BaseClient & URLSessionClient
-
-/**
-A client, encapsulating the logic for sending requests to servers and processing their responses.
-
-Only `baseURL` has to be specified by conformers—all the other members have default implementations (especially if you use the `Protoclient` type alias), intended as customization points for you to override.
-*/
-public protocol BaseClient {
-	/// The base URL relative to which to interpret request paths.
-	var baseURL: URL { get }
+public struct Protolayer {
+	let closure: (URLRequest) async throws -> Protoresponse
 	
-	/// The JSON encoder provided to requests.
-	var requestEncoder: JSONEncoder { get }
-	/// The JSON decoder provided to requests.
-	var responseDecoder: JSONDecoder { get }
-	
-	/// Encodes a request, dispatches it, decodes its response, and publishes that.
-	func send<R: Request>(_ request: R) async throws -> R.Response
-	
-	/// Turns a request into a raw `URLRequest`.
-	func rawRequest<R: Request>(for request: R) async throws -> URLRequest
-	
-	/// Figures out the URL to use for a request, including URL parameters.
-	func url<R: Request>(for request: R) async throws -> URL
-	
-	/// Provides the base URL to resolve a request's path against.
-	func baseURL(for request: some Request) async throws -> URL
-	
-	/// Adds any common HTTP headers to a request.
-	func addHeaders(to rawRequest: inout URLRequest) async throws
-	
-	/// Dispatches a request to the network, returning its response (data and error).
-	func dispatch<R: Request>(_ rawRequest: URLRequest, for request: R) async throws -> Protoresponse
-	
-	/// Wraps a raw data task response in a `Protoresponse` for nicer ergonomics.
-	func wrapResponse(data: Data, response: URLResponse) async throws -> Protoresponse
-	
-	// TODO: need some kind of middleware rather than this
-	/// Inspects any outgoing request, e.g. for logging purposes.
-	func traceOutgoing<R: Request>(_ rawRequest: URLRequest, for request: R) async
-	/// Inspects any incoming response, e.g. for logging purposes.
-	func traceIncoming<R: Request>(_ response: Protoresponse, for request: R, encodedAs rawRequest: URLRequest) async
-}
-
-public extension BaseClient {
-	var requestEncoder: JSONEncoder { .init() }
-	var responseDecoder: JSONDecoder { .init() }
-	
-	func send<R: Request>(_ request: R) async throws -> R.Response {
-		let rawRequest = try await self.rawRequest(for: request)
-		await traceOutgoing(rawRequest, for: request)
-		let rawResponse = try await dispatch(rawRequest, for: request)
-		await traceIncoming(rawResponse, for: request, encodedAs: rawRequest)
-		return try request.decodeResponse(from: rawResponse)
+	public init(send: @escaping (_ request: URLRequest) async throws -> Protoresponse) {
+		self.closure = send
 	}
 	
-	func rawRequest<R: Request>(for request: R) async throws -> URLRequest {
-		try await URLRequest(url: url(for: request)) <- { rawRequest in
-			rawRequest.httpMethod = request.httpMethod
-			rawRequest.setValue(request.contentType, forHTTPHeaderField: "Content-Type")
-			try await addHeaders(to: &rawRequest)
-			try request.encode(to: &rawRequest, using: requestEncoder)
+	/// Invokes this layer's send function, sending off the given request down its hierarchy and getting out a response.
+	public func send(_ request: URLRequest) async throws -> Protoresponse {
+		try await closure(request)
+	}
+	
+	/// Like ``send(_:)``, but returning a `Result<Protoresponse, Error>` for your convenience.
+	/// Useful because ``Result.init(catching:)`` doesn't have an `async` version (yet?).
+	public func trySend(_ request: URLRequest) async -> Protoresult {
+		do {
+			return .success(try await send(request))
+		} catch {
+			return .failure(error)
+		}
+	}
+}
+
+extension Protolayer {
+	/// Uses the provided ``URLSession`` (defaulting to `.shared`) to send a request and return the response as a ``Protoresponse``
+	public static func urlSession(_ session: URLSession = .shared) -> Self {
+		.init { request in
+			let (body, response) = try await session.data(for: request)
+			return .init(body: body, metadata: response)
+		}
+	}
+}
+
+public typealias Protoresult = Result<Protoresponse, Error>
+
+public extension Protolayer {
+	/// Applies the given transformation to the request before sending it off to this layer.
+	func transformRequest(
+		_ transform: @escaping (inout URLRequest) async throws -> Void
+	) -> Self {
+		.init { request in
+			try await send(request <- transform)
 		}
 	}
 	
-	func url<R: Request>(for request: R) async throws -> URL {
-		(URLComponents(
-			url: try await baseURL(for: request) <- {
-				if !request.path.isEmpty {
-					$0.appendPathComponent(request.path)
-				}
-			},
-			resolvingAgainstBaseURL: false
-		)! <- {
-			let urlParams = request.urlParams
-			guard !urlParams.isEmpty else { return }
-			$0.queryItems = urlParams.map { name, value in
-				URLQueryItem(
-					name: name,
-					value: value.map(String.init(describing:))
-				)
-			}
-		}).url!
+	/// Provides the request to the given function before sending it off to this layer.
+	func readRequest(_ read: @escaping (URLRequest) async throws -> Void) -> Self {
+		.init { request in
+			try await read(request)
+			return try await send(request)
+		}
 	}
 	
-	// has to be marked async to not shadow the protocol requirement in non-async contexts (likely swift bug)
-	func baseURL(for request: some Request) async -> URL {
-		request.baseURLOverride ?? baseURL
+	/// Applies the given transformation to the response once it leaves this layer.
+	func transformResponse(
+		_ transform: @escaping (inout Protoresponse) async throws -> Void
+	) -> Self {
+		.init { try await send($0) <- transform }
 	}
 	
-	func addHeaders(to rawRequest: inout URLRequest) {}
-	
-	func wrapResponse(data: Data, response: URLResponse) -> Protoresponse {
-		Protoresponse(
-			body: data,
-			metadata: response,
-			decoder: responseDecoder
-		)
+	/// Provides the response to the given function once it leaves this layer.
+	func readResponse(_ read: @escaping (Protoresponse) async throws -> Void) -> Self {
+		.init { try await send($0) <- read }
 	}
 	
-	func traceOutgoing<R: Request>(_ rawRequest: URLRequest, for request: R) {}
-	func traceIncoming<R: Request>(_ response: Protoresponse, for request: R, encodedAs rawRequest: URLRequest) {}
+	func readResult(_ read: @escaping (Protoresult) async throws -> Void) -> Self {
+		.init { try await (trySend($0) <- read).get() }
+	}
+	
+	/// Once an exchange has completed, whether successful or not, provides the request and its result (response or error) to the given function.
+	func readExchange(_ read: @escaping (URLRequest, Protoresult) async throws -> Void) -> Self {
+		.init { request in
+			let result = await trySend(request)
+			try await read(request, result)
+			return try result.get()
+		}
+	}
+	
+	/// Wraps this layer in a new layer, able to apply any desired transformations on top.
+	/// This is equivalent to capturing the layer in a new ``Protolayer``, but more convenient when chaining layer functions.
+	func wrap(
+		_ layer: @escaping (URLRequest, Self) async throws -> Protoresponse
+	) -> Self {
+		.init { try await layer($0, self) }
+	}
 }
 
-/// A client that uses a URLSession to dispatch its requests.
-public protocol URLSessionClient: BaseClient {
-	/// The session to dispatch requests on, defaulting to `URLSession.shared`.
-	var urlSession: URLSession { get }
-}
-
-public extension URLSessionClient {
-	var urlSession: URLSession { .shared }
-	
-	func dispatch<R: Request>(_ rawRequest: URLRequest, for request: R) async throws -> Protoresponse {
-		let data: Data
-		let response: URLResponse
-		if #available(macOS 12.0, iOS 15, tvOS 15, watchOS 8, *) {
-			(data, response) = try await urlSession.data(for: rawRequest)
-		} else {
-			(data, response) = try await withCheckedThrowingContinuation { continuation in
-				urlSession.dataTask(with: rawRequest) { data, response, error in
-					if let error = error {
-						continuation.resume(with: .failure(error))
-					} else {
-						continuation.resume(with: .success((data!, response!)))
-					}
+public extension Protolayer {
+	/// Prints outgoing requests and incoming responses for any traffic passing through this layer.
+	/// - Parameter maxBodyLength: maximum number of characters to print when logging response bodies
+	func printExchanges(maxBodyLength: Int = 1000) -> Self {
+		.init { request in
+			let path = request.url!.path
+			print("\(path): sending \(request.httpMethod!) request to", request.url!)
+			print(String(data: request.httpBody ?? Data(), encoding: .utf8)!)
+			
+			return try await send(request) <- { response in
+				print("\(path): received response:")
+				if response.body.count < maxBodyLength {
+					print((try? response.decodeString(using: .utf8)) ?? "<undecodable>")
+				} else {
+					print("<\(response.body.count) bytes>")
 				}
 			}
 		}
-		return try await wrapResponse(data: data, response: response)
 	}
 }

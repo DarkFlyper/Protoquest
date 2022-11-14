@@ -21,7 +21,7 @@ public extension Protoresponse {
 		using decoderOverride: JSONDecoder? = nil
 	) throws -> Body where Body: Decodable {
 		do {
-			return try (decoderOverride ?? decoder)
+			return try (decoderOverride ?? JSONDecoder())
 				.decode(Body.self, from: body)
 		} catch let error as DecodingError {
 			throw JSONDecodingError(error: error, toDecode: self)
