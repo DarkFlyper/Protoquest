@@ -12,6 +12,11 @@ public struct Protoresponse {
 		metadata as? HTTPURLResponse
 	}
 	
+	/// The value of the `Content-Type` HTTP header, if available.
+	public var contentType: String? {
+		httpMetadata?.value(forHTTPHeaderField: "Content-Type")
+	}
+	
 	public init(body: Data, metadata: URLResponse) {
 		self.body = body
 		self.metadata = metadata

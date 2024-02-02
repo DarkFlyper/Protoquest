@@ -28,7 +28,9 @@ public protocol Request {
 	/// Decodes the response received for this response into the expected response type.
 	func decodeResponse(from raw: Protoresponse) throws -> Response
 	
-	/// The url to send the request to, including the ``path`` and respecting ``baseURLOverride``.
+	/// Creates a ready-to-send URLRequest to ``url(relativeTo:)`` configured through ``configure(_:)``.
+	func encode(baseURL: URL) throws -> URLRequest
+	/// The url to send the request to, including the ``path`` & ``encodeQueryItems()`` and respecting ``baseURLOverride``.
 	func url(relativeTo baseURL: URL) -> URL
 	/// Configures a request by settings its method (``httpMethod``), content type (``contentType``), and body (``encode(to:)``)
 	func configure(_ rawRequest: inout URLRequest) throws
@@ -56,6 +58,10 @@ public extension Request {
 		if !path.isEmpty {
 			url.appendPathComponent(path)
 		}
+	}
+	
+	func encode(baseURL: URL) throws -> URLRequest {
+		try URLRequest(url: url(relativeTo: baseURL)) <- configure
 	}
 	
 	func url(relativeTo baseURL: URL) -> URL {
