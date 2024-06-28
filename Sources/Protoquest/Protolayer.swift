@@ -2,10 +2,16 @@ import Foundation
 import HandyOperators
 
 public struct Protolayer {
+	@usableFromInline
+	static let dummyBaseURL = URL(string: "/")!
+	
 	let baseURL: URL
 	let closure: (URLRequest) async throws -> Protoresponse
 	
-	public init(baseURL: URL, send: @escaping (_ request: URLRequest) async throws -> Protoresponse) {
+	public init(
+		baseURL: URL = Self.dummyBaseURL,
+		send: @escaping (_ request: URLRequest) async throws -> Protoresponse
+	) {
 		self.baseURL = baseURL
 		self.closure = send
 	}
@@ -32,7 +38,7 @@ public struct Protolayer {
 
 extension Protolayer {
 	/// Uses the provided ``URLSession`` (defaulting to `.shared`) to send a request and return the response as a ``Protoresponse``
-	public static func urlSession(_ session: URLSession = .shared, baseURL: URL) -> Self {
+	public static func urlSession(_ session: URLSession = .shared, baseURL: URL = Self.dummyBaseURL) -> Self {
 		.init(baseURL: baseURL) { request in
 			let (body, response) = try await session.data(for: request)
 			return .init(body: body, metadata: response)

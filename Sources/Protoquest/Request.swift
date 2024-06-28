@@ -65,7 +65,10 @@ public extension Request {
 	}
 	
 	func url(relativeTo baseURL: URL) -> URL {
-		(URLComponents(
+		guard baseURLOverride != nil || baseURL != Protolayer.dummyBaseURL else {
+			fatalError("attempting to send a request without providing a valid base URL in the hierarchy")
+		}
+		return (URLComponents(
 			url: (baseURLOverride ?? baseURL) <- appendPath(to:),
 			resolvingAgainstBaseURL: false
 		)! <- {
